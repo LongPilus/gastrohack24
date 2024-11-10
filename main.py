@@ -1,11 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Import CORS
 import requests
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all origins on all routes
 
 # Your VALUE SERP API Key
 API_KEY = 'A35866157B3C45C2A51ADC67956FD8E7'
-
 
 class UserClassifier:
     def __init__(self, browser, language, device, location):
@@ -41,9 +42,7 @@ class UserClassifier:
         wealth = self.classify_wealth()
         return {"Age": age, "Capital": wealth}
 
-
 def search_nearby_hotels(location, language='de', device='desktop'):
-    # Define the endpoint and parameters for the VALUE SERP API
     url = 'https://api.valueserp.com/search'
     params = {
         'api_key': API_KEY,
@@ -51,22 +50,19 @@ def search_nearby_hotels(location, language='de', device='desktop'):
         'location': f"lat:{location['lat']},lon:{location['long']},zoom:15",
         'hl': language,
         'device': 'desktop',
-        'tbm': 'lcl',  # 'lcl' for local search
+        'tbm': 'lcl',
         'search_type': 'places'
     }
 
-    # Send the GET request to VALUE SERP API
     response = requests.get(url, params=params)
 
-    # Check if the request was successful
     if response.status_code == 200:
         hotels = response.json()
         return hotels
     else:
         return {"error": f"Unable to retrieve hotels: {response.status_code}"}
 
-
-@app.route('/classify', methods=['GET', 'POST'])
+@app.route('/classify', methods=['POST'])
 def classify_user():
     try:
         data = request.get_json()
@@ -78,10 +74,8 @@ def classify_user():
         )
         classification_result = classifier.classify()
 
-        # Perform a hotel search using the user's location
         hotel_results = search_nearby_hotels(data["location"], language=data["language"], device=data["device"])
 
-        # Combine classification result with hotel search results
         result = {
             "classification": classification_result,
             "hotels": hotel_results
@@ -91,7 +85,6 @@ def classify_user():
         return jsonify({"error": f"Missing key: {e}"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)
