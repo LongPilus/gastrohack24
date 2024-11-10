@@ -97,7 +97,8 @@ class UserClassifier:
         return "Young" if young_count >= 2 else "Old"
 
     def classify_wealth(self):
-        rich_countries = ["us", "de", "jp", "ch"]
+        rich_countries = ["at", "be", "ch", "de", "fr", "ie", "li", "lu", "mc", "nl", "en-gb"]
+
         country_code = self.language
         is_rich_country = country_code in rich_countries
 
