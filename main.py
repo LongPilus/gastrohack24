@@ -30,7 +30,6 @@ def google_search(start_location, end_location, vehicle):
         'location': end_location,  # Change if necessary
         'hl': 'de',
         'gl': 'at',
-    #    'tbm': 'nws'  # Use 'nws' to get news-type results if Omio doesn't return as standard results
     }
 
     # Send the GET request to ValueSERP API
@@ -161,15 +160,9 @@ def classify_user():
             omio_items = [item for item in oof.json()['organic_results'] if "omio" in item['domain']]
             if omio_items:
                 omio_item = omio_items[0]
-                try:
-                    fahrzeit_info = [text.strip() for text in omio_item['snippet'].split('·') if "Fahrzeit" in text][0]
-                except IndexError:
-                    fahrzeit_info = None
-
-                try:
-                    preis_info = [text.strip() for text in omio_item['snippet'].split('·') if "Preis" in text][0]
-                except IndexError:
-                    preis_info = None
+                preis_info = omio_item['rich_snippet']['top']['detected_extensions']['price']
+                nums = [int(word) for word in omio_item['snippet'].split() if word.isdigit()]
+                fahrzeit_info = nums[:2]
             else:
                 fahrzeit_info, preis_info = None, None
 
