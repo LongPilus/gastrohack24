@@ -39,25 +39,25 @@ def google_search(start_location, end_location, vehicle):
 
 
 class UserClassifier:
-    def __init__(self, browser, language, device, location, referer):
+    def __init__(self, browser, language, device, location, referrer):
         self.browser = browser.lower()
         self.language = language.lower()
         self.device = device.lower()
         self.location = location
-        self.referer = referer
+        self.referrer = referrer
 
     def classify_age(self):
         modern_browsers = ["chrome", "opera gx", "safari"]
         boomer_browsers = ["internet explorer", "safari", "edge"]
 
-        boomer_referers = ["facebook", "yahoo", "msn",
+        boomer_referrers = ["facebook", "yahoo", "msn",
             "nextdoor", "weather", "linkedin", "huffpost", "foxnews", "cnn", "quora", "yelp"]
 
 
         is_modern_browser = any(browser in self.browser for browser in modern_browsers)
         is_phone = "phone" in self.device or "mobile" in self.device
         is_up_to_date = int(self.browser.split()[-1]) >= 100
-        contains_boomer = int(any(ref in self.referer for ref in boomer_referers))
+        contains_boomer = int(any(ref in self.referrer for ref in boomer_referrers))
 
         young_count = sum([is_modern_browser, is_phone, is_up_to_date])-contains_boomer
         return "Young" if young_count >= 2 else "Old"
@@ -142,14 +142,14 @@ def classify_user():
     try:
         data = request.get_json()
 
-        referer = data.get("referer", "")
+        referrer = data.get("referrer", "")
         
         classifier = UserClassifier(
             browser=data["browser"],
             language=data["language"],
             device=data["device"],
             location=data["location"],
-            referer=referer
+            referrer=referrer
         )
         classification_result = classifier.classify()
 
