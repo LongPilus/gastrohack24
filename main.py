@@ -2,6 +2,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import CORS
 from geopy.distance import geodesic  # To calculate distance
 import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from bs4 import BeautifulSoup
+import re
+from statistics import mean
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -11,12 +16,28 @@ CORS(app)  # Enable CORS for all routes
 API_KEY = 'A35866157B3C45C2A51ADC67956FD8E7'
 
 CITIES_OBEROSTERREICH = [
-    {"name": "Linz", "lat": 48.3069, "long": 14.2858},
-    {"name": "Wels", "lat": 48.1575, "long": 14.0272},
-    {"name": "Steyr", "lat": 48.0427, "long": 14.4213},
-    {"name": "Leonding", "lat": 48.2545, "long": 14.2421},
-    {"name": "Traun", "lat": 48.2165, "long": 14.2347}
+    {"name": "Linz", "lat": 48.3069, "long": 14.2858}
 ]
+
+def google_search(start_location, end_location, vehicle):
+    query = f"{end_location} {start_location} {vehicle}"
+
+    # Define the endpoint and parameters for ValueSERP API
+    url = 'https://api.valueserp.com/search'
+    params = {
+        'api_key': API_KEY,
+        'q': query,
+        'location': end_location,  # Change if necessary
+        'hl': 'de',
+        'gl': 'at',
+    #    'tbm': 'nws'  # Use 'nws' to get news-type results if Omio doesn't return as standard results
+    }
+
+    # Send the GET request to ValueSERP API
+    response = requests.get(url, params=params)
+    #return link, text
+    return response
+
 
 class UserClassifier:
     def __init__(self, browser, language, device, location):
@@ -67,13 +88,32 @@ def find_nearest_city(location):
 
     return {"nearest_city": closest_city, "distance_km": round(min_distance, 2)}
 
+def get_closest_location(lat, lon):
+    url = 'https://api.valueserp.com/search'
+    params = {
+        'api_key': API_KEY,
+        'q': 'stadt',
+        'location': f"lat:{lat},lon:{lon},zoom:15",  # Using provided coordinates with a 15-zoom level
+        'tbm': 'lcl',  # Local search for businesses and locations
+        'hl': 'de',    # Language
+        'num': 1,      # Get only the closest result
+        'search_type': 'places'
+    }
+
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        results = response.json()['places_results'][0]['title']
+        return results
+    else:
+        return {"error": f"Failed to retrieve data: {response.status_code}"}
+
 
 def search_nearby_hotels(location, language='de', device='desktop'):
     # Define the endpoint and parameters for the VALUE SERP API
     url = 'https://api.valueserp.com/search'
     params = {
         'api_key': API_KEY,
-        'q': 'hotels',
+        'q': f'hotels Salzburg',
         'location': f"lat:{location['lat']},lon:{location['long']},zoom:15",
         'hl': language,
         'device': 'desktop',
@@ -110,11 +150,39 @@ def classify_user():
         # Find the nearest large city in Oberösterreich
         nearest_city_result = find_nearest_city(data["location"])
 
-        # Combine classification result with hotel search results
+        # Do travel data bullshit fuck my life
+        travel_info = {}
+
+        start_location = get_closest_location(data["location"]['lat'], data["location"]['long'])
+        for vehicle in ['bus', 'train', 'plane']:
+            oof = google_search(start_location.split()[start_location.split().index("Stadt") + 1], nearest_city_result['nearest_city'], vehicle)
+
+            # Check if any item matches the "omio" domain, otherwise set to None
+            omio_items = [item for item in oof.json()['organic_results'] if "omio" in item['domain']]
+            if omio_items:
+                omio_item = omio_items[0]
+                try:
+                    fahrzeit_info = [text.strip() for text in omio_item['snippet'].split('·') if "Fahrzeit" in text][0]
+                except IndexError:
+                    fahrzeit_info = None
+
+                try:
+                    preis_info = [text.strip() for text in omio_item['snippet'].split('·') if "Preis" in text][0]
+                except IndexError:
+                    preis_info = None
+            else:
+                fahrzeit_info, preis_info = None, None
+
+            travel_info[vehicle] = {
+                "Fahrzeit": fahrzeit_info,
+                "Preis": preis_info
+            }
+            # Combine classification result with hotel search results
         result = {
             "classification": classification_result,
-            "hotels": hotel_results,
-            "nearest_city": nearest_city_result
+            "hotels": hotel_results['places_results'][:3],
+            "nearest_city": nearest_city_result,
+            "travel_data": travel_info
         }
         return jsonify(result), 200
     except KeyError as e:
