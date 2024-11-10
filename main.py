@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Your VALUE SERP API Key
-API_KEY = 'A35866157B3C45C2A51ADC67956FD8E7'
+API_KEY = 'tobyschtelvedetco'
 
 CITIES_OBEROSTERREICH = [
     {"name": "Linz", "lat": 48.3069, "long": 14.2858}
