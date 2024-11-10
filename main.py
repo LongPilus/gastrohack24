@@ -105,7 +105,7 @@ class UserClassifier:
         is_apple_device = "apple" in self.device
         is_old = self.classify_age() == "Old"
 
-        rich_count = sum([is_rich_country, is_apple_device, is_old])
+        rich_count = sum([is_rich_country, is_apple_device, is_old, is_apple_device])
         return "Rich" if rich_count >= 2 else "Poor"
 
     def classify(self):
