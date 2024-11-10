@@ -11,13 +11,48 @@ from statistics import mean
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-
 # Your VALUE SERP API Key
 API_KEY = 'A35866157B3C45C2A51ADC67956FD8E7'
 
 CITIES_OBEROSTERREICH = [
     {"name": "Linz", "lat": 48.3069, "long": 14.2858}
 ]
+
+def get_nearest_town(lat, lon):
+    url = "https://nominatim.openstreetmap.org/reverse"
+
+    headers = {
+        'User-Agent': 'AustrianTourismHackathonThingieThing/1.0 (tdvorak227@gmail.com)',
+        'Referer': 'https://is.muni.cz'
+    }
+
+    # Set up the parameters for the reverse geocoding request
+    params = {
+        'lat': lat,
+        'lon': lon,
+        'format': 'json',
+        'zoom': 10  # Zoom level 10 returns towns, cities, and localities
+    }
+
+    # Send the request to the Nominatim API
+    response = requests.get(url, headers=headers, params=params)
+
+    if response.status_code == 200:
+        # Parse the JSON response
+        data = response.json()
+
+        # Get the town or city name from the response
+        town = data['name']
+
+        # If the response includes town/city data, return it; otherwise, show an error
+        if town:
+            return town
+        else:
+            return "Town or city not found"
+    else:
+        return f"Error: {response.status_code}"
+
+
 
 def google_search(start_location, end_location, vehicle):
     query = f"{end_location} {start_location} {vehicle}"
@@ -34,7 +69,7 @@ def google_search(start_location, end_location, vehicle):
 
     # Send the GET request to ValueSERP API
     response = requests.get(url, params=params)
-    #return link, text
+    # return link, text
     return response
 
 
@@ -51,15 +86,14 @@ class UserClassifier:
         boomer_browsers = ["internet explorer", "safari", "edge"]
 
         boomer_referrers = ["facebook", "yahoo", "msn",
-            "nextdoor", "weather", "linkedin", "huffpost", "foxnews", "cnn", "quora", "yelp"]
-
+                            "nextdoor", "weather", "linkedin", "huffpost", "foxnews", "cnn", "quora", "yelp"]
 
         is_modern_browser = any(browser in self.browser for browser in modern_browsers)
         is_phone = "phone" in self.device or "mobile" in self.device
         is_up_to_date = int(self.browser.split()[-1]) >= 100
         contains_boomer = int(any(ref in self.referrer for ref in boomer_referrers))
 
-        young_count = sum([is_modern_browser, is_phone, is_up_to_date])-contains_boomer
+        young_count = sum([is_modern_browser, is_phone, is_up_to_date]) - contains_boomer
         return "Young" if young_count >= 2 else "Old"
 
     def classify_wealth(self):
@@ -93,33 +127,13 @@ def find_nearest_city(location):
 
     return {"nearest_city": closest_city, "distance_km": round(min_distance, 2)}
 
-def get_closest_location(lat, lon):
-    url = 'https://api.valueserp.com/search'
-    params = {
-        'api_key': API_KEY,
-        'q': 'stadt',
-        'location': f"lat:{lat},lon:{lon},zoom:15",  # Using provided coordinates with a 15-zoom level
-        'tbm': 'lcl',  # Local search for businesses and locations
-        'hl': 'de',    # Language
-        'num': 1,      # Get only the closest result
-        'search_type': 'places'
-    }
-
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        results = response.json()['places_results'][0]['title']
-        return results
-    else:
-        return {"error": f"Failed to retrieve data: {response.status_code}"}
-
-
 def search_nearby_hotels(location, language='de', device='desktop'):
     # Define the endpoint and parameters for the VALUE SERP API
     url = 'https://api.valueserp.com/search'
     params = {
         'api_key': API_KEY,
         'q': f'hotels Linz',
-        'location': "lat: 48.3069, lon: 14.2858, zoom:15",
+        'location': f"lat:{location['lat']},lon:{location['long']},zoom:15",
         'hl': language,
         'device': 'desktop',
         'tbm': 'lcl',  # 'lcl' for local search
@@ -143,7 +157,7 @@ def classify_user():
         data = request.get_json()
 
         referrer = data.get("referrer", "")
-        
+
         classifier = UserClassifier(
             browser=data["browser"],
             language=data["language"],
@@ -162,9 +176,9 @@ def classify_user():
         # Do travel data bullshit fuck my life
         travel_info = {}
 
-        start_location = get_closest_location(data["location"]['lat'], data["location"]['long'])
+        start_location = get_nearest_town(data["location"]['lat'], data["location"]['long'])
         for vehicle in ['bus', 'train', 'plane']:
-            oof = google_search(start_location.split()[start_location.split().index("Stadt") + 1], nearest_city_result['nearest_city'], vehicle)
+            oof = google_search(start_location, nearest_city_result['nearest_city'], vehicle)
 
             # Check if any item matches the "omio" domain, otherwise set to None
             omio_items = [item for item in oof.json()['organic_results'] if "omio" in item['domain']]
@@ -190,7 +204,6 @@ def classify_user():
             "travel_data": travel_info
         }
         return jsonify(result), 200
-
     except KeyError as e:
         return jsonify({"error": f"Missing key: {e}"}), 400
     except Exception as e:
