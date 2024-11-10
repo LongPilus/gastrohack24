@@ -141,12 +141,15 @@ def search_nearby_hotels(location, language='de', device='desktop'):
 def classify_user():
     try:
         data = request.get_json()
+
+        referer = data.get("referer", "")
+        
         classifier = UserClassifier(
             browser=data["browser"],
             language=data["language"],
             device=data["device"],
             location=data["location"],
-            referer=data["referer"]
+            referer=referer
         )
         classification_result = classifier.classify()
 
