@@ -119,7 +119,7 @@ def search_nearby_hotels(location, language='de', device='desktop'):
     params = {
         'api_key': API_KEY,
         'q': f'hotels Linz',
-        'location': "Linz",
+        'location': f"lat:{location['lat']},lon:{location['long']},zoom:15",
         'hl': language,
         'device': 'desktop',
         'tbm': 'lcl',  # 'lcl' for local search
