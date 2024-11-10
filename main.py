@@ -200,7 +200,7 @@ def classify_user():
         result = {
             "classification": classification_result,
             "hotels": hotel_results['places_results'][:3],
-            "nearest_city": nearest_city_result,
+            "nearest_city": start_location,
             "travel_data": travel_info
         }
         return jsonify(result), 200
