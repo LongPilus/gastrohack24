@@ -170,15 +170,17 @@ def classify_user():
             omio_items = [item for item in oof.json()['organic_results'] if "omio" in item['domain']]
             if omio_items:
                 omio_item = omio_items[0]
+                link = omio_item['link']
                 preis_info = omio_item['rich_snippet']['top']['detected_extensions']['price']
                 nums = [int(word) for word in omio_item['snippet'].split() if word.isdigit()]
                 fahrzeit_info = nums[:2]
             else:
-                fahrzeit_info, preis_info = None, None
+                link, fahrzeit_info, preis_info = None, None, None
 
             travel_info[vehicle] = {
                 "Fahrzeit": fahrzeit_info,
-                "Preis": preis_info
+                "Preis": preis_info,
+                "Link": link,
             }
             # Combine classification result with hotel search results
         result = {
@@ -188,6 +190,7 @@ def classify_user():
             "travel_data": travel_info
         }
         return jsonify(result), 200
+
     except KeyError as e:
         return jsonify({"error": f"Missing key: {e}"}), 400
     except Exception as e:
