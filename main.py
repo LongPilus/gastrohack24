@@ -66,7 +66,7 @@ def search_nearby_hotels(location, language='de', device='desktop'):
         return {"error": f"Unable to retrieve hotels: {response.status_code}"}
 
 
-@app.route('/classify', methods=['POST'])
+@app.route('/classify', methods=['GET', 'POST'])
 def classify_user():
     try:
         data = request.get_json()
